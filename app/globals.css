@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 3%;
-  --foreground: 0 0% 98%;
-  --border: 0 0% 14%;
+  --background: 0 0% 3.55%; /* zinc-950 -> #09090b */
+  --foreground: 0 0% 98.04%; /* zinc-50 -> #fafafa */
+  --border: 240 5.9% 16.1%; /* zinc-800 -> #27272a */
 }
 
 * {
@@ -18,4 +18,6 @@ body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
