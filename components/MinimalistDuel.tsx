@@ -115,6 +115,12 @@ export default function MinimalistDuel() {
                     onClick={() => handleVote("a")}
                     className="w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border border-border-dark focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black"
                   >
+                    {currentTrend.option_a_image_url && (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center opacity-40 filter brightness-75"
+                        style={{ backgroundImage: `url('${currentTrend.option_a_image_url}')` }}
+                      ></div>
+                    )}
                     <span className="z-10 text-xl md:text-2xl font-bold tracking-tight px-4 text-center text-text-primary">
                       {currentTrend.option_a}
                     </span>
@@ -150,6 +156,12 @@ export default function MinimalistDuel() {
                     onClick={() => handleVote("b")}
                     className="w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border border-border-dark focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black"
                   >
+                    {currentTrend.option_b_image_url && (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center opacity-40 filter brightness-75"
+                        style={{ backgroundImage: `url('${currentTrend.option_b_image_url}')` }}
+                      ></div>
+                    )}
                     <span className="z-10 text-xl md:text-2xl font-bold tracking-tight px-4 text-center text-text-primary">
                       {currentTrend.option_b}
                     </span>
