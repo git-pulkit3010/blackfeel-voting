@@ -6,7 +6,7 @@ export async function GET() {
     // Fetch active trends for all categories
     const { data: trends, error } = await supabaseAdmin
       .from("trends")
-      .select("*")
+      .select("id, category, option_a, option_b, votes_a, votes_b, created_at, active, option_a_image_url, option_b_image_url")
       .eq("active", true)
       .order("created_at", { ascending: false });
 
