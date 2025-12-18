@@ -1,6 +1,5 @@
 import type { Config } from "tailwindcss";
 
-
 const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,29 +8,22 @@ const config: Config = {
   ],
   theme: {
     extend: {
-            
       colors: {
         border: "hsl(var(--border))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        zinc: {
-          50: "#fafafa",       // zinc-50
-          100: "#f4f4f5",      // zinc-100
-          200: "#e4e4e7",      // zinc-200
-          300: "#d4d4d8",      // zinc-300
-          400: "#a1a1aa",      // zinc-400
-          500: "#71717a",      // zinc-500
-          600: "#52525b",      // zinc-600
-          700: "#3f3f46",      // zinc-700
-          800: "#27272a",      // zinc-800
-          900: "#18181b",      // zinc-900
-          950: "#09090b",      // zinc-950
-        },
+        // New colors from design
+        "accent-blue": "#3b82f6",
+        "background-dark": "#000000",
+        "card-dark": "#111111",
+        "border-dark": "#333333",
+        "text-primary": "#ffffff",
+        "text-secondary": "#a1a1aa",
+        "text-tertiary": "#71717a",
       },
-      borderRadius: {
-        lg: "8px",           // rounded-lg
-        xl: "12px",          // rounded-xl
-        "2xl": "16px",       // rounded-2xl
+      fontFamily: {
+        display: ["Inter", "sans-serif"],
+        mono: ["Fira Code", "monospace"],
       },
     },
   },
