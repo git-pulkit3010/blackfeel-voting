@@ -35,3 +35,5 @@ next-env.d.ts
 
 COMPLETE_PROJECT_BUNDLE.json
 extract_project.py
+
+thumbnail_generation/node_modules/
