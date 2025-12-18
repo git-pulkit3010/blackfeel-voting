@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function GET() {
   try {
     // Fetch active trends for all categories
-    const { data: trends, error } = await supabase
+    const { data: trends, error } = await supabaseAdmin
       .from("trends")
       .select("*")
       .eq("active", true)
