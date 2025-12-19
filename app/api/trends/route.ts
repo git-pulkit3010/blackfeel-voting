@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
+// Disable caching for this route
+export const revalidate = 0; // Disable static generation and force dynamic rendering
+
 export async function GET() {
   try {
     // Fetch active trends for all categories
@@ -12,7 +15,7 @@ export async function GET() {
 
     if (error) throw error;
 
-    // Organize trends by category
+    // Organize trends by category - only get the most recent one per category
     const trendsByCategory: Record<string, any> = {};
 
     trends?.forEach((trend) => {
@@ -21,9 +24,23 @@ export async function GET() {
       }
     });
 
-    return NextResponse.json(trendsByCategory);
+    // Return JSON with no-cache headers to prevent caching
+    return NextResponse.json(trendsByCategory, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
   } catch (error) {
     console.error("Error fetching trends:", error);
-    return NextResponse.json({ error: "Failed to fetch trends" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch trends" }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
   }
 }
