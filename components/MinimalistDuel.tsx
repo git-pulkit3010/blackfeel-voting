@@ -23,11 +23,11 @@ export default function MinimalistDuel() {
 
   useEffect(() => {
     fetchTrends();
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
   const fetchTrends = async () => {
     try {
-      const response = await fetch("/api/trends");
+      const response = await fetch("/api/trends", { cache: "no-store" });
       const data = await response.json();
       setTrends(data);
       setLoading(false);
