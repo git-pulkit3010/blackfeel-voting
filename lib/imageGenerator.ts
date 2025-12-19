@@ -43,8 +43,8 @@ export async function generateImage(query: string, type: 'movie' | 'tv'): Promis
       const writer = fs.createWriteStream(outputPath);
       response.data.pipe(writer);
 
-      await new Promise((resolve, reject) => {
-        writer.on('finish', resolve);
+      await new Promise<void>((resolve, reject) => {
+        writer.on('finish', () => resolve());
         writer.on('error', reject);
       });
 
