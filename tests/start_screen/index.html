@@ -35,6 +35,14 @@ tailwind.config = {
 .neon-line {
     box-shadow: 0 0 10px #3b82f6, 0 0 20px #3b82f6;
 }
+
+.neon-border {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+#loading-progress {
+    box-shadow: 0 0 10px #3b82f6, 0 0 20px #3b82f6;
+}
 </style>
 </head>
 
@@ -77,9 +85,11 @@ tailwind.config = {
             Voted.<br class="md:hidden"/> Dropped.
         </h1>
 
-        <div class="w-full max-w-md h-1.5 md:h-2 bg-primary neon-line rounded-full mb-12 shadow-[0_0_15px_rgba(59,130,246,0.8)]"></div>
+        <div class="w-full max-w-md h-1.5 md:h-2 bg-transparent border-2 border-primary neon-border rounded-full mb-12 relative overflow-hidden">
+            <div id="loading-progress" class="h-full bg-primary neon-line rounded-full absolute top-0 left-0 opacity-0 transition-all duration-1000 ease-out" style="width: 0%;"></div>
+        </div>
 
-        <button class="group relative px-8 py-3 md:px-12 md:py-4 bg-transparent border-2 border-white dark:border-white text-white font-bold tracking-widest uppercase transition-all duration-300 hover:bg-white hover:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-black">
+        <button id="vote-button" class="group relative px-8 py-3 md:px-12 md:py-4 bg-transparent border-2 border-white dark:border-white text-white font-bold tracking-widest uppercase transition-all duration-300 hover:bg-white hover:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-black">
             <span class="relative z-10 text-sm md:text-base">Vote to Drop</span>
             <div class="absolute inset-0 opacity-0 group-hover:opacity-20 bg-white blur-md transition-opacity duration-300"></div>
         </button>
@@ -106,6 +116,31 @@ tailwind.config = {
 <script>
 // Force dark mode
 document.documentElement.classList.add('dark');
+
+// Loading bar animation logic
+document.getElementById('vote-button').addEventListener('click', function() {
+    const progressBar = document.getElementById('loading-progress');
+
+    // Disable the button during animation to prevent multiple clicks
+    this.disabled = true;
+
+    // Make the progress bar visible
+    progressBar.style.opacity = '1';
+
+    // Start the animation from 0% to 100%
+    let width = 0;
+    const interval = setInterval(() => {
+        if (width >= 100) {
+            clearInterval(interval);
+            // Redirect to the next page after animation completes
+            // For now, we'll use a placeholder URL - you can replace this with the actual page
+            window.location.href = 'next_page.html';
+        } else {
+            width++;
+            progressBar.style.width = width + '%';
+        }
+    }, 30); // Adjust the speed by changing the interval time (lower = faster)
+});
 </script>
 
 </body>
