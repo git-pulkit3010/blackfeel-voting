@@ -7,6 +7,8 @@ CREATE TABLE trends (
   category TEXT NOT NULL,
   option_a TEXT NOT NULL,
   option_b TEXT NOT NULL,
+  option_a_image_url TEXT,
+  option_b_image_url TEXT,
   votes_a INTEGER DEFAULT 0,
   votes_b INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT true,
@@ -47,9 +49,9 @@ CREATE POLICY "Allow authenticated users to update vote counts"
   WITH CHECK (active = true);  -- Ensure the trend is still active after update
 
 -- 6. Insert some sample data (optional - for testing)
-INSERT INTO trends (category, option_a, option_b, active) VALUES
-  ('tv-shows', 'Stranger Things', 'The Last of Us', true),
-  ('movies', 'Oppenheimer', 'Barbie', true),
-  ('cricket', 'IPL 2025', 'World Cup Legends', true),
-  ('anime', 'Jujutsu Kaisen', 'Demon Slayer', true),
-  ('music', 'Taylor Swift Era', 'Drake Vibes', true);
+INSERT INTO trends (category, option_a, option_b, active, option_a_image_url, option_b_image_url) VALUES
+  ('tv-shows', 'Stranger Things', 'The Last of Us', true, NULL, '/the_last_of_us.jpg'),
+  ('movies', 'Oppenheimer', 'Barbie', true, NULL, NULL),
+  ('cricket', 'IPL 2025', 'World Cup Legends', true, NULL, NULL),
+  ('anime', 'Jujutsu Kaisen', 'Demon Slayer', true, NULL, NULL),
+  ('music', 'Taylor Swift Era', 'Drake Vibes', true, NULL, NULL);
