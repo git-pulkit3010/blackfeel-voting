@@ -7,73 +7,104 @@ interface StartupIntroProps {
 }
 
 export default function StartupIntro({ onComplete }: StartupIntroProps) {
-  const [displayText, setDisplayText] = useState("");
-  
-  // 1. Define the two distinct parts of the animation
   const part1 = "Designed by You \n Perfected by AI \n> Delivered by BlackFeel";
   const part2 = "Welcome to THE VOTE";
-  
-  // Combine them with double newline for visual spacing
-  const fullText = `${part1}\n\n${part2}`;
-  
+
+  const [displayText, setDisplayText] = useState("");
+  const [phase, setPhase] = useState<"typingPart1" | "fadeOut" | "typingPart2" | "done">(
+    "typingPart1"
+  );
+
+  // Refs to track state without causing re-renders
   const indexRef = useRef(0);
-  const isFinishedRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasStartedRef = useRef(false); // New safety flag
 
   useEffect(() => {
-    // Reset state on mount
-    setDisplayText("");
+    // RESET LOGIC: When phase changes, reset index and flags
     indexRef.current = 0;
-    isFinishedRef.current = false;
+    hasStartedRef.current = false;
+    
+    // Clear any existing timeouts immediately
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    let timeoutId: NodeJS.Timeout;
+    // ------------------------------------------------
+    // TYPE WRITER LOGIC
+    // ------------------------------------------------
+    const runTypingLoop = (textToType: string, nextPhaseCallback: () => void) => {
+      
+      const typeChar = () => {
+        const currentIndex = indexRef.current;
 
-    const typeCharacter = () => {
-      if (indexRef.current < fullText.length) {
-        const char = fullText.charAt(indexRef.current);
+        // 1. SAFETY CHECK: Stop if we are out of bounds (Fixes "undefined")
+        if (currentIndex >= textToType.length) {
+          // Finished typing this part. Wait, then trigger next phase.
+          timeoutRef.current = setTimeout(() => {
+            nextPhaseCallback();
+          }, 1200); 
+          return;
+        }
+
+        // 2. GET CHAR SAFELY: charAt returns "" if out of bounds, never "undefined"
+        const char = textToType.charAt(currentIndex);
         
         setDisplayText((prev) => prev + char);
         indexRef.current++;
 
-        // --- SPEED LOGIC ---
-        // Requirement 1: 1/2 Speed (Slower)
-        // Previous was 30-70ms. Now 60-140ms.
-        let nextSpeed = Math.floor(Math.random() * (140 - 60 + 1) + 60);
+        // 3. RECURSION: Schedule next character
+        const speed = Math.floor(Math.random() * (100 - 40 + 1) + 40); // Slightly faster for smoother feel
+        timeoutRef.current = setTimeout(typeChar, speed);
+      };
 
-        // --- PAUSE LOGIC ---
-        // Requirement 4: Wait longer before the second paragraph
-        // If we just finished typing the last character of part1, pause for a full second.
-        if (indexRef.current === part1.length) {
-          nextSpeed = 1200; // 1.2 second pause
-        }
-
-        timeoutId = setTimeout(typeCharacter, nextSpeed);
-      } else if (!isFinishedRef.current) {
-        isFinishedRef.current = true;
-        
-        // Wait 2s after everything is done before redirecting
-        timeoutId = setTimeout(() => {
-          onComplete();
-        }, 2000);
-      }
+      typeChar();
     };
 
-    // Start
-    typeCharacter();
+    // ------------------------------------------------
+    // PHASE HANDLERS
+    // ------------------------------------------------
+    
+    if (phase === "typingPart1") {
+      setDisplayText(""); // Ensure clean slate
+      runTypingLoop(part1, () => setPhase("fadeOut"));
+    } 
+    
+    else if (phase === "fadeOut") {
+      // Just wait for the CSS fade out, then switch phase
+      timeoutRef.current = setTimeout(() => {
+        setDisplayText(""); // Clear text while invisible
+        setPhase("typingPart2");
+      }, 600); // Matches CSS duration
+    } 
+    
+    else if (phase === "typingPart2") {
+      runTypingLoop(part2, () => {
+        setPhase("done");
+      });
+    }
+    
+    else if (phase === "done") {
+       timeoutRef.current = setTimeout(onComplete, 1500);
+    }
 
+    // CLEANUP: Kills the loop if component unmounts
     return () => {
-      clearTimeout(timeoutId);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [onComplete, fullText, part1.length]); 
+    
+  }, [phase, onComplete]); // Removed part1/part2 from dependency to prevent restarts
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black text-white">
       <div className="w-full max-w-5xl px-8">
-        {/* Requirement 2: Font size increased (text-3xl / text-5xl) 
-           Requirement 3: Spacing increased (leading-loose) and Centered (text-center)
-        */}
-        <pre className="font-mono text-3xl md:text-5xl whitespace-pre-wrap leading-loose tracking-tight text-white text-center font-bold">
+        <pre
+          className={`font-mono text-3xl md:text-5xl whitespace-pre-wrap leading-loose tracking-tight text-white text-center font-bold transition-opacity duration-500 ${
+            phase === "fadeOut" ? "opacity-0" : "opacity-100"
+          }`}
+        >
           {displayText}
-          <span className="animate-pulse inline-block w-3 h-8 md:w-5 md:h-12 bg-white ml-2 align-middle"></span>
+          {phase !== "done" && (
+            <span className="animate-pulse inline-block w-3 h-8 md:w-5 md:h-12 bg-white ml-2 align-middle"></span>
+          )}
         </pre>
       </div>
     </div>
