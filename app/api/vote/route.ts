@@ -35,6 +35,8 @@ export async function POST(request: Request) {
     const globalOptionsString = allTrends.map(t => `${t.option_a}|${t.option_b}`).join('::');
     const globalHash = createHash('md5').update(globalOptionsString).digest('hex');
 
+    const optionName = choice === 'a' ? trend.option_a : trend.option_b;
+
     // Check for existing vote from this user
     const existingVotes = await sql`
       SELECT options_hash FROM user_votes
@@ -53,14 +55,17 @@ export async function POST(request: Request) {
       // Global options have changed, update the existing vote record
       await sql`
         UPDATE user_votes
-        SET options_hash = ${globalHash}, updated_at = NOW()
+        SET 
+          options_hash = ${globalHash}, 
+          option_name = ${optionName},
+          updated_at = NOW()
         WHERE user_identifier = ${ip}
       `;
     } else {
       // First time voting, insert new record
       await sql`
-        INSERT INTO user_votes (user_identifier, options_hash)
-        VALUES (${ip}, ${globalHash})
+        INSERT INTO user_votes (user_identifier, options_hash, option_name)
+        VALUES (${ip}, ${globalHash}, ${optionName})
       `;
     }
 
