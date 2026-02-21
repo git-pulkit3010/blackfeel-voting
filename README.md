@@ -32,6 +32,7 @@ A modern, AI-powered voting system for trending t-shirt designs across multiple 
 
 ## 🚀 Quick Start
 
+#### Ensure you are on Node 24.
 1. **Install dependencies**:
    ```bash
    npm install
