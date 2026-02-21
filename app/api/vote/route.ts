@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql, Trend } from "@/lib/db";
 import { headers } from "next/headers";
+import { createHash } from "crypto";
 
 export async function POST(request: Request) {
   try {
@@ -26,21 +27,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Trend not found" }, { status: 404 });
     }
 
+    // Compute global options hash from ALL active trends
+    const allTrends = await sql`
+      SELECT option_a, option_b FROM trends WHERE active = true ORDER BY category
+    ` as Trend[];
+
+    const globalOptionsString = allTrends.map(t => `${t.option_a}|${t.option_b}`).join('::');
+    const globalHash = createHash('md5').update(globalOptionsString).digest('hex');
+
     // Check for existing vote from this user
-    const existing = await sql`
-      SELECT id FROM user_votes
-      WHERE trend_id = ${trendId} AND user_identifier = ${ip}
+    const existingVotes = await sql`
+      SELECT options_hash FROM user_votes
+      WHERE user_identifier = ${ip}
     `;
 
-    if (existing.length > 0) {
-      return NextResponse.json({ error: "Already voted" }, { status: 403 });
+    // If user has voted before, check if global options have changed
+    if (existingVotes.length > 0) {
+      const storedHash = existingVotes[0].options_hash;
+
+      // If global options haven't changed, reject the vote
+      if (storedHash === globalHash) {
+        return NextResponse.json({ error: "Already voted" }, { status: 403 });
+      }
+
+      // Global options have changed, update the existing vote record
+      await sql`
+        UPDATE user_votes
+        SET options_hash = ${globalHash}, updated_at = NOW()
+        WHERE user_identifier = ${ip}
+      `;
+    } else {
+      // First time voting, insert new record
+      await sql`
+        INSERT INTO user_votes (user_identifier, options_hash)
+        VALUES (${ip}, ${globalHash})
+      `;
     }
-
-    // Record the user's vote
-    await sql`
-      INSERT INTO user_votes (trend_id, user_identifier)
-      VALUES (${trendId}, ${ip})
-    `;
 
     // Increment vote count using atomic update
     const updatedTrends = await sql`

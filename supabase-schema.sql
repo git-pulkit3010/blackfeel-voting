@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS trends (
   votes_a INTEGER DEFAULT 0,
   votes_b INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT true,
+  options_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -23,28 +24,30 @@ CREATE TABLE IF NOT EXISTS design_history (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Create user_votes table to track one vote per user per trend
+-- 3. Create user_votes table to track one vote per user (global, not per trend)
 CREATE TABLE IF NOT EXISTS user_votes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  trend_id UUID REFERENCES trends(id) ON DELETE CASCADE,
   user_identifier TEXT NOT NULL,
+  options_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(trend_id, user_identifier)
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_identifier)
 );
 
 -- 4. Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_trends_active ON trends(active);
 CREATE INDEX IF NOT EXISTS idx_trends_category ON trends(category);
+CREATE INDEX IF NOT EXISTS idx_trends_options_hash ON trends(options_hash);
 CREATE INDEX IF NOT EXISTS idx_history_category ON design_history(category);
 CREATE INDEX IF NOT EXISTS idx_history_created_at ON design_history(created_at);
 CREATE INDEX IF NOT EXISTS idx_user_votes_identifier ON user_votes(user_identifier);
-CREATE INDEX IF NOT EXISTS idx_user_votes_trend_id ON user_votes(trend_id);
 
 -- 5. Insert some sample data (optional - for testing)
-INSERT INTO trends (category, option_a, option_b, active, option_a_image_url, option_b_image_url) VALUES
-  ('tv-shows', 'Stranger Things', 'The Last of Us', true, NULL, '/the_last_of_us.jpg'),
-  ('movies', 'Oppenheimer', 'Barbie', true, NULL, NULL),
-  ('cricket', 'IPL 2025', 'World Cup Legends', true, NULL, NULL),
-  ('anime', 'Jujutsu Kaisen', 'Demon Slayer', true, NULL, NULL),
-  ('music', 'Taylor Swift Era', 'Drake Vibes', true, NULL, NULL)
+-- Note: options_hash should be generated as MD5(option_a || '|' || option_b)
+INSERT INTO trends (category, option_a, option_b, active, option_a_image_url, option_b_image_url, options_hash) VALUES
+  ('tv-shows', 'Stranger Things', 'The Last of Us', true, NULL, '/the_last_of_us.jpg', MD5('Stranger Things|The Last of Us')),
+  ('movies', 'Oppenheimer', 'Barbie', true, NULL, NULL, MD5('Oppenheimer|Barbie')),
+  ('cricket', 'IPL 2025', 'World Cup Legends', true, NULL, NULL, MD5('IPL 2025|World Cup Legends')),
+  ('anime', 'Jujutsu Kaisen', 'Demon Slayer', true, NULL, NULL, MD5('Jujutsu Kaisen|Demon Slayer')),
+  ('music', 'Taylor Swift Era', 'Drake Vibes', true, NULL, NULL, MD5('Taylor Swift Era|Drake Vibes'))
 ON CONFLICT DO NOTHING;

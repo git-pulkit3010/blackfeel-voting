@@ -17,16 +17,16 @@ export default function MinimalistDuel() {
   const [trends, setTrends] = useState<Record<string, Trend>>({});
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
-  const [votedTrends, setVotedTrends] = useState<string[]>([]);
+  const [hasVoted, setHasVoted] = useState(false);
 
   const currentCategory = CATEGORIES[currentCategoryIndex];
   const currentTrend = trends[currentCategory.id];
 
   useEffect(() => {
-    // Load previous votes from storage on mount
-    const saved = localStorage.getItem("blackfeel_votes");
-    if (saved) {
-      setVotedTrends(JSON.parse(saved));
+    // Load previous vote from storage on mount
+    const savedHasVoted = localStorage.getItem("blackfeel_has_voted");
+    if (savedHasVoted === "true") {
+      setHasVoted(true);
     }
     fetchTrends();
   }, []);
@@ -44,7 +44,7 @@ export default function MinimalistDuel() {
   };
 
   const handleVote = async (choice: "a" | "b") => {
-    if (!currentTrend || voting || votedTrends.includes(currentTrend.id)) return;
+    if (!currentTrend || voting || hasVoted) return;
     setVoting(true);
     try {
       const response = await fetch("/api/vote", {
@@ -53,15 +53,17 @@ export default function MinimalistDuel() {
         body: JSON.stringify({ trendId: currentTrend.id, choice }),
       });
       if (response.status === 403) {
-        alert("You have already voted on this topic.");
+        // User already voted (server-side check), sync local state
+        setHasVoted(true);
+        localStorage.setItem("blackfeel_has_voted", "true");
+        alert("You have already voted.");
         return;
       }
       if (response.ok) {
         const updatedTrend = await response.json();
         // Update local storage and state
-        const newVotes = [...votedTrends, currentTrend.id];
-        setVotedTrends(newVotes);
-        localStorage.setItem("blackfeel_votes", JSON.stringify(newVotes));
+        setHasVoted(true);
+        localStorage.setItem("blackfeel_has_voted", "true");
         setTrends((prev) => ({ ...prev, [currentCategory.id]: updatedTrend }));
         setTimeout(() => nextCategory(), 1500);
       }
@@ -125,7 +127,7 @@ export default function MinimalistDuel() {
                 {/* Option A */}
                 <div className="flex-1 w-full flex flex-col items-center group">
                   <button
-                    disabled={voting || votedTrends.includes(currentTrend.id)}
+                    disabled={voting || hasVoted}
                     onClick={() => handleVote("a")}
                     className="w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border border-border-dark focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
                   >
@@ -166,7 +168,7 @@ export default function MinimalistDuel() {
                 {/* Option B */}
                 <div className="flex-1 w-full flex flex-col items-center group">
                   <button
-                    disabled={voting || votedTrends.includes(currentTrend.id)}
+                    disabled={voting || hasVoted}
                     onClick={() => handleVote("b")}
                     className="w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border border-border-dark focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
                   >
