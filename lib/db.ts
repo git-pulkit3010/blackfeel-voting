@@ -7,14 +7,16 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not defined in environment variables');
 }
 
+// Append uselibpqcompat=true to adopt libpq semantics now
+const connectionString = `${process.env.DATABASE_URL}${process.env.DATABASE_URL.includes('?') ? '&' : '?'}uselibpqcompat=true`;
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   ssl: {
     rejectUnauthorized: false
   }
 });
 
-// Tagged template function to match neon() API
 export const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
   const text = strings.reduce((acc, str, i) =>
     acc + str + (values[i] !== undefined ? '$' + (i + 1) : ''), '');
