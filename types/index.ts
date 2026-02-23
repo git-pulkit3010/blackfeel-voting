@@ -15,6 +15,7 @@ export interface Trend {
   votes_b: number;
   created_at: string;
   active: boolean;
+  options_hash: string;
 }
 
 export interface HistoryItem {
