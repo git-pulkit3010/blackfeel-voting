@@ -13,19 +13,24 @@ export default function VoteCastAnimation({ onComplete }: VoteCastAnimationProps
   const [phase, setPhase] = useState<"typing" | "done">("typing");
 
   const indexRef = useRef(0);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Clear everything on phase change
+    console.log("[VoteCastAnimation] useEffect triggered, phase:", phase);
+    
+    // Clear everything on mount/phase change
     indexRef.current = 0;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     const runTypingLoop = (textToType: string, nextPhaseCallback: () => void) => {
+      console.log("[VoteCastAnimation] Starting typing loop for:", textToType);
+      
       const typeChar = () => {
         const currentIndex = indexRef.current;
 
         // Safety check to prevent 'undefined'
         if (currentIndex >= textToType.length) {
+          console.log("[VoteCastAnimation] Typing complete, scheduling next phase");
           timeoutRef.current = setTimeout(() => {
             nextPhaseCallback();
           }, 1200);
@@ -47,14 +52,24 @@ export default function VoteCastAnimation({ onComplete }: VoteCastAnimationProps
 
     if (phase === "typing") {
       setDisplayText("");
-      runTypingLoop(message, () => setPhase("done"));
+      runTypingLoop(message, () => {
+        console.log("[VoteCastAnimation] Setting phase to done");
+        setPhase("done");
+      });
     } else if (phase === "done") {
+      console.log("[VoteCastAnimation] Phase is done, scheduling onComplete");
       // Call onComplete after a delay so the message stays visible
-      timeoutRef.current = setTimeout(onComplete, 1500);
+      timeoutRef.current = setTimeout(() => {
+        console.log("[VoteCastAnimation] Calling onComplete");
+        onComplete();
+      }, 1500);
     }
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current) {
+        console.log("[VoteCastAnimation] Cleaning up timeout");
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, [phase, onComplete]);
 

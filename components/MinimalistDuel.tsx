@@ -46,21 +46,26 @@ export default function MinimalistDuel() {
   };
 
   const handleVote = async (choice: "a" | "b") => {
+    console.log("[MinimalistDuel] handleVote called, choice:", choice, "hasVoted:", hasVoted, "voting:", voting);
     if (!currentTrend || voting || hasVoted) return;
     setVoting(true);
     try {
+      console.log("[MinimalistDuel] Sending vote request");
       const response = await fetch("/api/vote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trendId: currentTrend.id, choice }),
       });
+      console.log("[MinimalistDuel] Vote response status:", response.status);
       if (response.status === 403) {
         // User already voted (server-side check), sync local state
+        console.log("[MinimalistDuel] Already voted (403)");
         setHasVoted(true);
         localStorage.setItem("blackfeel_has_voted", "true");
         return;
       }
       if (response.ok) {
+        console.log("[MinimalistDuel] Vote successful, showing animation");
         const updatedTrend = await response.json();
         // Update local storage and state
         setHasVoted(true);
@@ -68,17 +73,26 @@ export default function MinimalistDuel() {
         setTrends((prev) => ({ ...prev, [currentCategory.id]: updatedTrend }));
         // Show the vote cast animation
         setShowVoteAnimation(true);
+        console.log("[MinimalistDuel] showVoteAnimation set to:", true);
       }
     } catch (error) {
-      console.error("Error voting:", error);
+      console.error("[MinimalistDuel] Error voting:", error);
     } finally {
       setVoting(false);
     }
   };
 
   const handleAnimationComplete = () => {
+    console.log("[MinimalistDuel] handleAnimationComplete called");
     setShowVoteAnimation(false);
   };
+
+  // Log animation state changes
+  useEffect(() => {
+    if (showVoteAnimation) {
+      console.log("[MinimalistDuel] showVoteAnimation changed to:", showVoteAnimation);
+    }
+  }, [showVoteAnimation]);
 
   const nextCategory = () => setCurrentCategoryIndex((prev) => (prev + 1) % CATEGORIES.length);
   const previousCategory = () => setCurrentCategoryIndex((prev) => (prev - 1 + CATEGORIES.length) % CATEGORIES.length);
