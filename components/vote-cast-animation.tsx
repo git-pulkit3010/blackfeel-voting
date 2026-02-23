@@ -48,6 +48,9 @@ export default function VoteCastAnimation({ onComplete }: VoteCastAnimationProps
     if (phase === "typing") {
       setDisplayText("");
       runTypingLoop(message, () => setPhase("done"));
+    } else if (phase === "done") {
+      // Call onComplete after a delay so the message stays visible
+      timeoutRef.current = setTimeout(onComplete, 1500);
     }
 
     return () => {
@@ -59,7 +62,9 @@ export default function VoteCastAnimation({ onComplete }: VoteCastAnimationProps
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black text-white">
       <div className="w-full max-w-5xl px-8">
         <pre
-          className="font-mono text-4xl md:text-6xl whitespace-pre-wrap leading-tight text-white text-center font-bold opacity-100"
+          className={`font-mono text-4xl md:text-6xl whitespace-pre-wrap leading-tight text-white text-center font-bold transition-opacity duration-500 ${
+            phase === "done" ? "opacity-0" : "opacity-100"
+          }`}
         >
           {displayText}
 
