@@ -37,3 +37,5 @@ COMPLETE_PROJECT_BUNDLE.json
 extract_project.py
 
 test/thumbnail-generation/node_modules/
+
+tests/test-neon.mjs
