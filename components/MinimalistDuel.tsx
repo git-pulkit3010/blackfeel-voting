@@ -20,6 +20,7 @@ export default function MinimalistDuel() {
   const [voting, setVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [showVoteAnimation, setShowVoteAnimation] = useState(false);
+  const [voteComplete, setVoteComplete] = useState(false);
 
   const currentCategory = CATEGORIES[currentCategoryIndex];
   const currentTrend = trends[currentCategory.id];
@@ -29,6 +30,8 @@ export default function MinimalistDuel() {
     const savedHasVoted = localStorage.getItem("blackfeel_has_voted");
     if (savedHasVoted === "true") {
       setHasVoted(true);
+      setVoteComplete(true);
+      setShowVoteAnimation(true);
     }
     fetchTrends();
   }, []);
@@ -87,7 +90,8 @@ export default function MinimalistDuel() {
 
   const handleAnimationComplete = () => {
     console.log("[MinimalistDuel] handleAnimationComplete called");
-    setShowVoteAnimation(false);
+    // Keep the animation visible, just mark that typing is done
+    setVoteComplete(true);
   };
 
   // Log animation state changes
@@ -112,7 +116,7 @@ export default function MinimalistDuel() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background-dark font-display">
-      {showVoteAnimation && <VoteCastAnimation onComplete={handleAnimationComplete} />}
+      {(showVoteAnimation || voteComplete) && <VoteCastAnimation onComplete={handleAnimationComplete} showImmediately={voteComplete} />}
 
       {/* Header */}
       <header className="text-center mb-10 w-full max-w-lg mx-auto">

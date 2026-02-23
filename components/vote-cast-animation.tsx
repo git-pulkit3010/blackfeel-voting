@@ -4,13 +4,14 @@ import { useState, useEffect, useRef } from "react";
 
 interface VoteCastAnimationProps {
   onComplete: () => void;
+  showImmediately?: boolean;
 }
 
-export default function VoteCastAnimation({ onComplete }: VoteCastAnimationProps) {
+export default function VoteCastAnimation({ onComplete, showImmediately = false }: VoteCastAnimationProps) {
   const message = "Your Vote Has Been Cast";
 
-  const [displayText, setDisplayText] = useState("");
-  const [phase, setPhase] = useState<"typing" | "done">("typing");
+  const [displayText, setDisplayText] = useState(showImmediately ? message : "");
+  const [phase, setPhase] = useState<"typing" | "done">(showImmediately ? "done" : "typing");
 
   const indexRef = useRef(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -57,12 +58,9 @@ export default function VoteCastAnimation({ onComplete }: VoteCastAnimationProps
         setPhase("done");
       });
     } else if (phase === "done") {
-      console.log("[VoteCastAnimation] Phase is done, scheduling onComplete");
-      // Call onComplete after a delay so the message stays visible
-      timeoutRef.current = setTimeout(() => {
-        console.log("[VoteCastAnimation] Calling onComplete");
-        onComplete();
-      }, 1500);
+      console.log("[VoteCastAnimation] Phase is done, calling onComplete");
+      // Call onComplete immediately to hide the main content
+      onComplete();
     }
 
     return () => {
@@ -77,9 +75,7 @@ export default function VoteCastAnimation({ onComplete }: VoteCastAnimationProps
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black text-white">
       <div className="w-full max-w-5xl px-8">
         <pre
-          className={`font-mono text-4xl md:text-6xl whitespace-pre-wrap leading-tight text-white text-center font-bold transition-opacity duration-500 ${
-            phase === "done" ? "opacity-0" : "opacity-100"
-          }`}
+          className="font-mono text-4xl md:text-6xl whitespace-pre-wrap leading-tight text-white text-center font-bold"
         >
           {displayText}
 
