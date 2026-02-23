@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Trend, Category } from "@/types";
+import VoteCastAnimation from "@/components/vote-cast-animation";
 
 const CATEGORIES: Category[] = [
   { id: "tv-shows", name: "TV Shows", gradient: "" },
@@ -18,6 +19,7 @@ export default function MinimalistDuel() {
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+  const [showVoteAnimation, setShowVoteAnimation] = useState(false);
 
   const currentCategory = CATEGORIES[currentCategoryIndex];
   const currentTrend = trends[currentCategory.id];
@@ -56,7 +58,6 @@ export default function MinimalistDuel() {
         // User already voted (server-side check), sync local state
         setHasVoted(true);
         localStorage.setItem("blackfeel_has_voted", "true");
-        alert("You have already voted.");
         return;
       }
       if (response.ok) {
@@ -65,13 +66,18 @@ export default function MinimalistDuel() {
         setHasVoted(true);
         localStorage.setItem("blackfeel_has_voted", "true");
         setTrends((prev) => ({ ...prev, [currentCategory.id]: updatedTrend }));
-        setTimeout(() => nextCategory(), 1500);
+        // Show the vote cast animation
+        setShowVoteAnimation(true);
       }
     } catch (error) {
       console.error("Error voting:", error);
     } finally {
       setVoting(false);
     }
+  };
+
+  const handleAnimationComplete = () => {
+    setShowVoteAnimation(false);
   };
 
   const nextCategory = () => setCurrentCategoryIndex((prev) => (prev + 1) % CATEGORIES.length);
@@ -89,6 +95,8 @@ export default function MinimalistDuel() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background-dark font-display">
+      {showVoteAnimation && <VoteCastAnimation onComplete={handleAnimationComplete} />}
+
       {/* Header */}
       <header className="text-center mb-10 w-full max-w-lg mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-tight text-text-primary">Trend Vote</h1>
