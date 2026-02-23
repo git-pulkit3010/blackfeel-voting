@@ -62,6 +62,9 @@ export default function MinimalistDuel() {
         console.log("[MinimalistDuel] Already voted (403)");
         setHasVoted(true);
         localStorage.setItem("blackfeel_has_voted", "true");
+        // Still show the animation for returning users
+        setShowVoteAnimation(true);
+        console.log("[MinimalistDuel] showVoteAnimation set to:", true);
         return;
       }
       if (response.ok) {
