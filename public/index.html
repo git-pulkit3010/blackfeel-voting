@@ -48,20 +48,14 @@ tailwind.config = {
 
 <body class="bg-background-light dark:bg-background-dark text-gray-900 dark:text-white font-sans antialiased h-screen flex flex-col overflow-hidden transition-colors duration-300">
 
-<header class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-4 md:px-10 md:py-6">
+<header class="fixed top-0 left-0 right-0 z-50 flex justify-start items-start px-3 py-3 md:px-8 md:py-5">
 
     <div class="flex items-center">
         <img
             src="logo.png"
-            alt="BlackFeel Logo"
-            class="h-32 md:h-40 object-contain select-none"
+            alt="BlackWeave Logo"
+            class="h-14 md:h-20 lg:h-24 w-auto object-contain select-none -translate-x-1"
         />
-    </div>
-
-    <div class="flex items-center space-x-6">
-        <button class="hover:text-primary transition-colors duration-200">
-            <span class="material-symbols-outlined text-3xl">menu</span>
-        </button>
     </div>
 </header>
 
@@ -97,44 +91,75 @@ tailwind.config = {
             <p>Limited Edition</p>
         </div>
         <div class="text-right">
-            <p>Ends in 04:22:18</p>
+            <p>Ends in <span id="countdown-timer">30d 00h 00m 00s</span></p>
         </div>
     </div>
 </main>
 
-<div class="fixed bottom-4 right-4 z-50">
-<button class="p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 opacity-20 hover:opacity-100 transition-opacity" onclick="document.documentElement.classList.toggle('dark')">
-    <span class="material-symbols-outlined text-sm">light_mode</span>
-</button>
-</div>
 
 <script>
 // Force dark mode
 document.documentElement.classList.add('dark');
 
-// Loading bar animation logic
-document.getElementById('vote-button').addEventListener('click', function() {
-    const progressBar = document.getElementById('loading-progress');
+// Live 30-day countdown
+const countdownDurationMs = 30 * 24 * 60 * 60 * 1000;
+const countdownTarget = Date.now() + countdownDurationMs;
+const countdownEl = document.getElementById('countdown-timer');
 
-    // Disable the button during animation to prevent multiple clicks
-    this.disabled = true;
+function formatUnit(value) {
+    return String(value).padStart(2, '0');
+}
 
-    // Make the progress bar visible
+function updateCountdown() {
+    const remainingMs = Math.max(0, countdownTarget - Date.now());
+
+    const totalSeconds = Math.floor(remainingMs / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    countdownEl.textContent = `${formatUnit(days)}d ${formatUnit(hours)}h ${formatUnit(minutes)}m ${formatUnit(seconds)}s`;
+}
+
+updateCountdown();
+setInterval(updateCountdown, 1000);
+
+// Loading bar animation logic (deterministic on desktop + mobile)
+const voteButton = document.getElementById('vote-button');
+const progressBar = document.getElementById('loading-progress');
+const LOADING_MS = 2200;
+
+function runVoteTransition() {
+    // Prevent duplicate triggers from rapid taps.
+    if (voteButton.dataset.loading === 'true') return;
+    voteButton.dataset.loading = 'true';
+    voteButton.disabled = true;
+
     progressBar.style.opacity = '1';
+    progressBar.style.width = '0%';
+    progressBar.style.transition = `width ${LOADING_MS}ms linear, opacity 250ms ease`;
 
-    // Start the animation from 0% to 100%
-    let width = 0;
-    const interval = setInterval(() => {
-        if (width >= 100) {
-            clearInterval(interval);
-            // Redirect to the next page after animation completes
-            // For now, we'll use a placeholder URL - you can replace this with the actual page
-            window.location.href = '/vote';
-        } else {
-            width++;
-            progressBar.style.width = width + '%';
-        }
-    }, 30); // Adjust the speed by changing the interval time (lower = faster)
+    // Flush styles before starting the transition.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            progressBar.style.width = '100%';
+        });
+    });
+
+    setTimeout(() => {
+        window.location.assign('/vote');
+    }, LOADING_MS);
+}
+
+voteButton.addEventListener('click', runVoteTransition);
+
+// Reset if page is restored from browser cache (mobile back navigation).
+window.addEventListener('pageshow', () => {
+    voteButton.disabled = false;
+    voteButton.dataset.loading = 'false';
+    progressBar.style.opacity = '0';
+    progressBar.style.width = '0%';
 });
 </script>
 

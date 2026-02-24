@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Trend, Category } from "@/types";
+import VoteCastAnimation from "@/components/vote-cast-animation";
 
 const CATEGORIES: Category[] = [
   { id: "tv-shows", name: "TV Shows", gradient: "" },
@@ -18,6 +19,8 @@ export default function MinimalistDuel() {
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+  const [showVoteAnimation, setShowVoteAnimation] = useState(false);
+  const [voteAnimationComplete, setVoteAnimationComplete] = useState(false);
 
   const currentCategory = CATEGORIES[currentCategoryIndex];
   const currentTrend = trends[currentCategory.id];
@@ -25,9 +28,18 @@ export default function MinimalistDuel() {
   useEffect(() => {
     // Load previous vote from storage on mount
     const savedHasVoted = localStorage.getItem("blackfeel_has_voted");
+    const savedAnimationComplete = localStorage.getItem("blackfeel_vote_animation_complete");
+
     if (savedHasVoted === "true") {
       setHasVoted(true);
+      setShowVoteAnimation(true);
     }
+
+    if (savedAnimationComplete === "true") {
+      setVoteAnimationComplete(true);
+      setShowVoteAnimation(true);
+    }
+
     fetchTrends();
   }, []);
 
@@ -44,7 +56,15 @@ export default function MinimalistDuel() {
   };
 
   const handleVote = async (choice: "a" | "b") => {
-    if (!currentTrend || voting || hasVoted) return;
+    if (!currentTrend || voting) return;
+
+    if (hasVoted) {
+      const savedAnimationComplete = localStorage.getItem("blackfeel_vote_animation_complete");
+      setVoteAnimationComplete(savedAnimationComplete === "true");
+      setShowVoteAnimation(true);
+      return;
+    }
+
     setVoting(true);
     try {
       const response = await fetch("/api/vote", {
@@ -52,26 +72,44 @@ export default function MinimalistDuel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trendId: currentTrend.id, choice }),
       });
+
       if (response.status === 403) {
-        // User already voted (server-side check), sync local state
+        // User already voted server-side, sync local state and show animation.
         setHasVoted(true);
         localStorage.setItem("blackfeel_has_voted", "true");
-        alert("You have already voted.");
+        const savedAnimationComplete = localStorage.getItem("blackfeel_vote_animation_complete");
+        setVoteAnimationComplete(savedAnimationComplete === "true");
+        setShowVoteAnimation(true);
         return;
       }
+
       if (response.ok) {
-        const updatedTrend = await response.json();
-        // Update local storage and state
         setHasVoted(true);
         localStorage.setItem("blackfeel_has_voted", "true");
-        setTrends((prev) => ({ ...prev, [currentCategory.id]: updatedTrend }));
-        setTimeout(() => nextCategory(), 1500);
+
+        // New vote should always play the typing animation first.
+        setShowVoteAnimation(true);
+        setVoteAnimationComplete(false);
+        localStorage.removeItem("blackfeel_vote_animation_complete");
+
+        // Keep local trend counts fresh when API returns valid JSON.
+        try {
+          const updatedTrend = await response.json();
+          setTrends((prev) => ({ ...prev, [currentCategory.id]: updatedTrend }));
+        } catch (parseError) {
+          console.error("Error parsing vote response:", parseError);
+        }
       }
     } catch (error) {
       console.error("Error voting:", error);
     } finally {
       setVoting(false);
     }
+  };
+
+  const handleAnimationComplete = () => {
+    setVoteAnimationComplete(true);
+    localStorage.setItem("blackfeel_vote_animation_complete", "true");
   };
 
   const nextCategory = () => setCurrentCategoryIndex((prev) => (prev + 1) % CATEGORIES.length);
@@ -89,6 +127,13 @@ export default function MinimalistDuel() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background-dark font-display">
+      {showVoteAnimation && (
+        <VoteCastAnimation
+          onComplete={handleAnimationComplete}
+          showImmediately={voteAnimationComplete}
+        />
+      )}
+
       {/* Header */}
       <header className="text-center mb-10 w-full max-w-lg mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-tight text-text-primary">Trend Vote</h1>
@@ -127,7 +172,7 @@ export default function MinimalistDuel() {
                 {/* Option A */}
                 <div className="flex-1 w-full flex flex-col items-center group">
                   <button
-                    disabled={voting || hasVoted}
+                    disabled={voting}
                     onClick={() => handleVote("a")}
                     className="w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border border-border-dark focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
                   >
@@ -168,7 +213,7 @@ export default function MinimalistDuel() {
                 {/* Option B */}
                 <div className="flex-1 w-full flex flex-col items-center group">
                   <button
-                    disabled={voting || hasVoted}
+                    disabled={voting}
                     onClick={() => handleVote("b")}
                     className="w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border border-border-dark focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
                   >
