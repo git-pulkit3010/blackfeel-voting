@@ -32,6 +32,7 @@ export default function MinimalistDuel() {
 
     if (savedHasVoted === "true") {
       setHasVoted(true);
+      setShowVoteAnimation(true);
     }
 
     if (savedAnimationComplete === "true") {
@@ -83,12 +84,21 @@ export default function MinimalistDuel() {
       }
 
       if (response.ok) {
-        const updatedTrend = await response.json();
         setHasVoted(true);
         localStorage.setItem("blackfeel_has_voted", "true");
-        setTrends((prev) => ({ ...prev, [currentCategory.id]: updatedTrend }));
-        setVoteAnimationComplete(false);
+
+        // New vote should always play the typing animation first.
         setShowVoteAnimation(true);
+        setVoteAnimationComplete(false);
+        localStorage.removeItem("blackfeel_vote_animation_complete");
+
+        // Keep local trend counts fresh when API returns valid JSON.
+        try {
+          const updatedTrend = await response.json();
+          setTrends((prev) => ({ ...prev, [currentCategory.id]: updatedTrend }));
+        } catch (parseError) {
+          console.error("Error parsing vote response:", parseError);
+        }
       }
     } catch (error) {
       console.error("Error voting:", error);

@@ -125,29 +125,41 @@ function updateCountdown() {
 updateCountdown();
 setInterval(updateCountdown, 1000);
 
-// Loading bar animation logic
-document.getElementById('vote-button').addEventListener('click', function() {
-    const progressBar = document.getElementById('loading-progress');
+// Loading bar animation logic (deterministic on desktop + mobile)
+const voteButton = document.getElementById('vote-button');
+const progressBar = document.getElementById('loading-progress');
+const LOADING_MS = 2200;
 
-    // Disable the button during animation to prevent multiple clicks
-    this.disabled = true;
+function runVoteTransition() {
+    // Prevent duplicate triggers from rapid taps.
+    if (voteButton.dataset.loading === 'true') return;
+    voteButton.dataset.loading = 'true';
+    voteButton.disabled = true;
 
-    // Make the progress bar visible
     progressBar.style.opacity = '1';
+    progressBar.style.width = '0%';
+    progressBar.style.transition = `width ${LOADING_MS}ms linear, opacity 250ms ease`;
 
-    // Start the animation from 0% to 100%
-    let width = 0;
-    const interval = setInterval(() => {
-        if (width >= 100) {
-            clearInterval(interval);
-            // Redirect to the next page after animation completes
-            // For now, we'll use a placeholder URL - you can replace this with the actual page
-            window.location.href = '/vote';
-        } else {
-            width++;
-            progressBar.style.width = width + '%';
-        }
-    }, 30); // Adjust the speed by changing the interval time (lower = faster)
+    // Flush styles before starting the transition.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            progressBar.style.width = '100%';
+        });
+    });
+
+    setTimeout(() => {
+        window.location.assign('/vote');
+    }, LOADING_MS);
+}
+
+voteButton.addEventListener('click', runVoteTransition);
+
+// Reset if page is restored from browser cache (mobile back navigation).
+window.addEventListener('pageshow', () => {
+    voteButton.disabled = false;
+    voteButton.dataset.loading = 'false';
+    progressBar.style.opacity = '0';
+    progressBar.style.width = '0%';
 });
 </script>
 
