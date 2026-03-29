@@ -47,7 +47,7 @@ export async function GET(request: Request) {
         t.active
       FROM user_vote_choices uvc
       JOIN trends t ON uvc.trend_id = t.id
-      WHERE uvc.user_identifier = ${userEmail}
+      WHERE LOWER(uvc.user_identifier) = LOWER(${userEmail})
       ORDER BY uvc.created_at DESC
     `;
 

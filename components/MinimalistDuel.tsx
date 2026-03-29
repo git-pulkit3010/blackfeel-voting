@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -22,13 +22,34 @@ export default function MinimalistDuel() {
   const [trends, setTrends] = useState<Record<string, Trend>>({});
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
   const [showVoteAnimation, setShowVoteAnimation] = useState(false);
   const [voteAnimationComplete, setVoteAnimationComplete] = useState(false);
   const [userVoteChoices, setUserVoteChoices] = useState<Record<string, 'a' | 'b'>>({});
 
   const currentCategory = CATEGORIES[currentCategoryIndex];
   const currentTrend = trends[currentCategory.id];
+  const hasVoted = Object.keys(userVoteChoices).length > 0;
+  const hasAutoNavigated = useRef(false);
+
+  useEffect(() => {
+    if (!hasAutoNavigated.current && Object.keys(userVoteChoices).length > 0 && Object.keys(trends).length > 0) {
+      const votedTrendIds = Object.keys(userVoteChoices);
+      
+      let foundIndex = -1;
+      for (const trendId of votedTrendIds) {
+        const idx = CATEGORIES.findIndex(cat => trends[cat.id]?.id === trendId);
+        if (idx !== -1) {
+          foundIndex = idx;
+          break;
+        }
+      }
+
+      if (foundIndex !== -1) {
+        setCurrentCategoryIndex(foundIndex);
+        hasAutoNavigated.current = true;
+      }
+    }
+  }, [userVoteChoices, trends]);
 
   useEffect(() => {
     // Only proceed if user is authenticated
@@ -53,14 +74,7 @@ export default function MinimalistDuel() {
           });
 
           setUserVoteChoices(voteMap);
-          
-          // Check if user has voted for the current category
-          const currentCategoryTrend = trends[currentCategory.id];
-          if (currentCategoryTrend && voteMap[currentCategoryTrend.id]) {
-            setHasVoted(true);
-            setShowVoteAnimation(true);
-            setVoteAnimationComplete(true);
-          }
+          setUserVoteChoices(voteMap);
         }
       } catch (error) {
         console.error("Error fetching vote history:", error);
@@ -88,7 +102,6 @@ export default function MinimalistDuel() {
 
     // Check if user already voted for this specific trend
     if (userVoteChoices[currentTrend.id]) {
-      setHasVoted(true);
       setShowVoteAnimation(true);
       setVoteAnimationComplete(true);
       return;
@@ -105,7 +118,6 @@ export default function MinimalistDuel() {
 
       if (response.status === 403) {
         // User already voted server-side
-        setHasVoted(true);
         setShowVoteAnimation(true);
         setVoteAnimationComplete(true);
         return;
@@ -118,7 +130,6 @@ export default function MinimalistDuel() {
           [currentTrend.id]: choice,
         }));
         
-        setHasVoted(true);
         setShowVoteAnimation(true);
         setVoteAnimationComplete(false);
 

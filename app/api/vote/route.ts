@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     // Check for existing vote from this user
     const existingVotes = await sql`
       SELECT options_hash FROM user_votes
-      WHERE user_identifier = ${userIdentifier}
+      WHERE LOWER(user_identifier) = LOWER(${userIdentifier})
     `;
 
     // If user has voted before, check if global options have changed
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         SET
           options_hash = ${globalHash},
           updated_at = NOW()
-        WHERE user_identifier = ${userIdentifier}
+        WHERE LOWER(user_identifier) = LOWER(${userIdentifier})
       `;
     } else {
       // First time voting, insert new record
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     // Record the individual vote choice
     const existingVoteChoice = await sql`
       SELECT choice FROM user_vote_choices
-      WHERE user_identifier = ${userIdentifier} AND trend_id = ${trendId}
+      WHERE LOWER(user_identifier) = LOWER(${userIdentifier}) AND trend_id = ${trendId}
     `;
 
     if (existingVoteChoice.length > 0) {
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
         SET
           choice = ${choice},
           updated_at = NOW()
-        WHERE user_identifier = ${userIdentifier} AND trend_id = ${trendId}
+        WHERE LOWER(user_identifier) = LOWER(${userIdentifier}) AND trend_id = ${trendId}
       `;
     } else {
       // Insert new vote choice
