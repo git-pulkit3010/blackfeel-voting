@@ -39,3 +39,13 @@ extract_project.py
 test/thumbnail-generation/node_modules/
 
 tests/test-neon.mjs
+
+# blackfeel-auth frontend (separate Next.js app, not used in main build)
+/blackfeel-auth/frontend/.next/
+/blackfeel-auth/frontend/node_modules/
+
+DEPLOYMENT.md
+INTEGRATION_SUMMARY.md
+QUICKSTART.md
+TYPEWRITER_ANIMATION.md
+VOTE_TRACKING_UPDATE.md

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/components/auth/AuthContext";
 import type { Trend, Category } from "@/types";
 import VoteCastAnimation from "@/components/vote-cast-animation";
 
@@ -14,6 +16,8 @@ const CATEGORIES: Category[] = [
 ];
 
 export default function MinimalistDuel() {
+  const { isAuthenticated, user, logout } = useAuth();
+  const router = useRouter();
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [trends, setTrends] = useState<Record<string, Trend>>({});
   const [loading, setLoading] = useState(true);
@@ -21,27 +25,51 @@ export default function MinimalistDuel() {
   const [hasVoted, setHasVoted] = useState(false);
   const [showVoteAnimation, setShowVoteAnimation] = useState(false);
   const [voteAnimationComplete, setVoteAnimationComplete] = useState(false);
+  const [userVoteChoices, setUserVoteChoices] = useState<Record<string, 'a' | 'b'>>({});
 
   const currentCategory = CATEGORIES[currentCategoryIndex];
   const currentTrend = trends[currentCategory.id];
 
   useEffect(() => {
-    // Load previous vote from storage on mount
-    const savedHasVoted = localStorage.getItem("blackfeel_has_voted");
-    const savedAnimationComplete = localStorage.getItem("blackfeel_vote_animation_complete");
-
-    if (savedHasVoted === "true") {
-      setHasVoted(true);
-      setShowVoteAnimation(true);
+    // Only proceed if user is authenticated
+    if (!isAuthenticated || !user?.email) {
+      setLoading(false);
+      return;
     }
 
-    if (savedAnimationComplete === "true") {
-      setVoteAnimationComplete(true);
-      setShowVoteAnimation(true);
-    }
+    // Fetch vote history from server
+    const fetchVoteHistory = async () => {
+      try {
+        const response = await fetch('/api/vote-history', {
+          credentials: 'include',
+        });
 
+        if (response.ok) {
+          const data = await response.json();
+          const voteMap: Record<string, 'a' | 'b'> = {};
+          
+          data.votes.forEach((vote: any) => {
+            voteMap[vote.trendId] = vote.choice;
+          });
+
+          setUserVoteChoices(voteMap);
+          
+          // Check if user has voted for the current category
+          const currentCategoryTrend = trends[currentCategory.id];
+          if (currentCategoryTrend && voteMap[currentCategoryTrend.id]) {
+            setHasVoted(true);
+            setShowVoteAnimation(true);
+            setVoteAnimationComplete(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching vote history:", error);
+      }
+    };
+
+    fetchVoteHistory();
     fetchTrends();
-  }, []);
+  }, [isAuthenticated, user?.email]);
 
   const fetchTrends = async () => {
     try {
@@ -56,12 +84,13 @@ export default function MinimalistDuel() {
   };
 
   const handleVote = async (choice: "a" | "b") => {
-    if (!currentTrend || voting) return;
+    if (!currentTrend || voting || !isAuthenticated) return;
 
-    if (hasVoted) {
-      const savedAnimationComplete = localStorage.getItem("blackfeel_vote_animation_complete");
-      setVoteAnimationComplete(savedAnimationComplete === "true");
+    // Check if user already voted for this specific trend
+    if (userVoteChoices[currentTrend.id]) {
+      setHasVoted(true);
       setShowVoteAnimation(true);
+      setVoteAnimationComplete(true);
       return;
     }
 
@@ -70,27 +99,28 @@ export default function MinimalistDuel() {
       const response = await fetch("/api/vote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ trendId: currentTrend.id, choice }),
       });
 
       if (response.status === 403) {
-        // User already voted server-side, sync local state and show animation.
+        // User already voted server-side
         setHasVoted(true);
-        localStorage.setItem("blackfeel_has_voted", "true");
-        const savedAnimationComplete = localStorage.getItem("blackfeel_vote_animation_complete");
-        setVoteAnimationComplete(savedAnimationComplete === "true");
         setShowVoteAnimation(true);
+        setVoteAnimationComplete(true);
         return;
       }
 
       if (response.ok) {
+        // Update local vote choices
+        setUserVoteChoices((prev) => ({
+          ...prev,
+          [currentTrend.id]: choice,
+        }));
+        
         setHasVoted(true);
-        localStorage.setItem("blackfeel_has_voted", "true");
-
-        // New vote should always play the typing animation first.
         setShowVoteAnimation(true);
         setVoteAnimationComplete(false);
-        localStorage.removeItem("blackfeel_vote_animation_complete");
 
         // Keep local trend counts fresh when API returns valid JSON.
         try {
@@ -109,7 +139,6 @@ export default function MinimalistDuel() {
 
   const handleAnimationComplete = () => {
     setVoteAnimationComplete(true);
-    localStorage.setItem("blackfeel_vote_animation_complete", "true");
   };
 
   const nextCategory = () => setCurrentCategoryIndex((prev) => (prev + 1) % CATEGORIES.length);
@@ -121,7 +150,8 @@ export default function MinimalistDuel() {
     return option === "a" ? Math.round((votesA / total) * 100) : Math.round((votesB / total) * 100);
   };
 
-  if (loading) {
+  // Show loading while checking auth
+  if (!isAuthenticated || loading) {
     return <div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>;
   }
 
@@ -131,6 +161,11 @@ export default function MinimalistDuel() {
         <VoteCastAnimation
           onComplete={handleAnimationComplete}
           showImmediately={voteAnimationComplete}
+          userEmail={user?.email}
+          onSignOut={async () => {
+            await logout();
+            router.push('/auth');
+          }}
         />
       )}
 
@@ -138,7 +173,7 @@ export default function MinimalistDuel() {
       <header className="text-center mb-10 w-full max-w-lg mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-tight text-text-primary">Trend Vote</h1>
         <p className="text-text-secondary font-medium text-sm md:text-base">Help us choose the next winning design</p>
-        
+
         {/* Category Indicator */}
         <div className="flex items-center justify-center gap-2 mt-8">
           {CATEGORIES.map((_, idx) => (
@@ -172,9 +207,13 @@ export default function MinimalistDuel() {
                 {/* Option A */}
                 <div className="flex-1 w-full flex flex-col items-center group">
                   <button
-                    disabled={voting}
+                    disabled={voting || hasVoted}
                     onClick={() => handleVote("a")}
-                    className="w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border border-border-dark focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+                    className={`w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm ${
+                      userVoteChoices[currentTrend.id] === 'a'
+                        ? 'border-green-500 shadow-green-900/30'
+                        : 'border-border-dark hover:border-gray-500'
+                    }`}
                   >
                     {currentTrend.option_a_image_url && (
                       <div
@@ -185,18 +224,23 @@ export default function MinimalistDuel() {
                     <span className="z-10 text-xl md:text-2xl font-bold tracking-tight px-4 text-center text-text-primary">
                       {currentTrend.option_a}
                     </span>
+                    {userVoteChoices[currentTrend.id] === 'a' && (
+                      <div className="absolute top-2 right-2 z-20">
+                        <span className="material-icons text-green-500 text-3xl">check_circle</span>
+                      </div>
+                    )}
                   </button>
                   <div className="mt-4 flex flex-col items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                     <div className="font-mono text-xs font-medium text-text-secondary tracking-wider">
                       {getVotePercentage(currentTrend.votes_a, currentTrend.votes_b, "a")}% ({currentTrend.votes_a} votes)
                     </div>
                     <div className="w-24 h-1 bg-gray-800 rounded-full overflow-hidden mt-1">
-                      <div 
+                      <div
                         className={`h-full transition-all duration-500 ${
                           getVotePercentage(currentTrend.votes_a, currentTrend.votes_b, "a") >= getVotePercentage(currentTrend.votes_a, currentTrend.votes_b, "b")
                             ? "bg-accent-blue"
                             : "bg-text-tertiary"
-                        }`} 
+                        }`}
                         style={{ width: `${getVotePercentage(currentTrend.votes_a, currentTrend.votes_b, "a")}%` }}
                       />
                     </div>
@@ -213,9 +257,13 @@ export default function MinimalistDuel() {
                 {/* Option B */}
                 <div className="flex-1 w-full flex flex-col items-center group">
                   <button
-                    disabled={voting}
+                    disabled={voting || hasVoted}
                     onClick={() => handleVote("b")}
-                    className="w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border border-border-dark focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+                    className={`w-full aspect-video bg-[#09090b] rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center relative overflow-hidden border focus:border-accent-blue focus:outline-none ring-2 ring-transparent focus:ring-accent-blue/50 ring-offset-2 ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm ${
+                      userVoteChoices[currentTrend.id] === 'b'
+                        ? 'border-green-500 shadow-green-900/30'
+                        : 'border-border-dark hover:border-gray-500'
+                    }`}
                   >
                     {currentTrend.option_b_image_url && (
                       <div
@@ -226,18 +274,23 @@ export default function MinimalistDuel() {
                     <span className="z-10 text-xl md:text-2xl font-bold tracking-tight px-4 text-center text-text-primary">
                       {currentTrend.option_b}
                     </span>
+                    {userVoteChoices[currentTrend.id] === 'b' && (
+                      <div className="absolute top-2 right-2 z-20">
+                        <span className="material-icons text-green-500 text-3xl">check_circle</span>
+                      </div>
+                    )}
                   </button>
                   <div className="mt-4 flex flex-col items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                     <div className="font-mono text-xs font-medium text-text-secondary tracking-wider">
                       {getVotePercentage(currentTrend.votes_a, currentTrend.votes_b, "b")}% ({currentTrend.votes_b} votes)
                     </div>
                     <div className="w-24 h-1 bg-gray-800 rounded-full overflow-hidden mt-1">
-                      <div 
+                      <div
                         className={`h-full transition-all duration-500 ${
                           getVotePercentage(currentTrend.votes_a, currentTrend.votes_b, "b") >= getVotePercentage(currentTrend.votes_a, currentTrend.votes_b, "a")
                             ? "bg-accent-blue"
                             : "bg-text-tertiary"
-                        }`} 
+                        }`}
                         style={{ width: `${getVotePercentage(currentTrend.votes_a, currentTrend.votes_b, "b")}%` }}
                       />
                     </div>

@@ -1,15 +1,41 @@
 import { NextResponse } from "next/server";
 import { sql, Trend } from "@/lib/db";
-import { headers } from "next/headers";
 import { createHash } from "crypto";
+import { jwtVerify } from "jose";
 
 export async function POST(request: Request) {
   try {
-    const { trendId, choice } = await request.json();
-    const headerList = headers();
+    // --- Auth Check ---
+    const cookieHeader = request.headers.get('cookie') || '';
+    const cookies = Object.fromEntries(
+      cookieHeader.split(';').map(c => {
+        const [key, ...val] = c.trim().split('=');
+        return [key, val.join('=')];
+      })
+    );
 
-    // Get IP address (handling proxies like Vercel/Neon)
-    const ip = headerList.get("x-forwarded-for")?.split(',')[0] || "anonymous";
+    const accessToken = cookies['access_token'];
+    if (!accessToken) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    let userEmail: string;
+    try {
+      const secretKey = process.env.AUTH_SECRET_KEY || 'your_access_token_secret_here';
+      const secret = new TextEncoder().encode(secretKey);
+      const { payload } = await jwtVerify(accessToken, secret, {
+        algorithms: ['HS256'],
+      });
+      userEmail = payload.email as string;
+      if (!userEmail) {
+        return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+    }
+
+    // --- Vote Logic ---
+    const { trendId, choice } = await request.json();
 
     if (!trendId || !choice || !["a", "b"].includes(choice)) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -35,12 +61,13 @@ export async function POST(request: Request) {
     const globalOptionsString = allTrends.map(t => `${t.option_a}|${t.option_b}`).join('::');
     const globalHash = createHash('md5').update(globalOptionsString).digest('hex');
 
-    const optionName = choice === 'a' ? trend.option_a : trend.option_b;
+    // Use authenticated user email as identifier
+    const userIdentifier = userEmail;
 
     // Check for existing vote from this user
     const existingVotes = await sql`
       SELECT options_hash FROM user_votes
-      WHERE user_identifier = ${ip}
+      WHERE user_identifier = ${userIdentifier}
     `;
 
     // If user has voted before, check if global options have changed
@@ -55,17 +82,39 @@ export async function POST(request: Request) {
       // Global options have changed, update the existing vote record
       await sql`
         UPDATE user_votes
-        SET 
-          options_hash = ${globalHash}, 
-          option_name = ${optionName},
+        SET
+          options_hash = ${globalHash},
           updated_at = NOW()
-        WHERE user_identifier = ${ip}
+        WHERE user_identifier = ${userIdentifier}
       `;
     } else {
       // First time voting, insert new record
       await sql`
-        INSERT INTO user_votes (user_identifier, options_hash, option_name)
-        VALUES (${ip}, ${globalHash}, ${optionName})
+        INSERT INTO user_votes (user_identifier, options_hash)
+        VALUES (${userIdentifier}, ${globalHash})
+      `;
+    }
+
+    // Record the individual vote choice
+    const existingVoteChoice = await sql`
+      SELECT choice FROM user_vote_choices
+      WHERE user_identifier = ${userIdentifier} AND trend_id = ${trendId}
+    `;
+
+    if (existingVoteChoice.length > 0) {
+      // Update existing vote choice
+      await sql`
+        UPDATE user_vote_choices
+        SET
+          choice = ${choice},
+          updated_at = NOW()
+        WHERE user_identifier = ${userIdentifier} AND trend_id = ${trendId}
+      `;
+    } else {
+      // Insert new vote choice
+      await sql`
+        INSERT INTO user_vote_choices (user_identifier, trend_id, choice)
+        VALUES (${userIdentifier}, ${trendId}, ${choice})
       `;
     }
 
