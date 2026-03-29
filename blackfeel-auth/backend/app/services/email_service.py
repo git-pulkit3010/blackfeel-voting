@@ -12,7 +12,7 @@ load_dotenv()
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 # Match the variable name in .env (RESEND_FROM_EMAIL)
-FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL") or os.getenv("FROM_EMAIL", "noreply@yourdomain.com")
+FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL") or os.getenv("FROM_EMAIL", "onboarding@resend.dev")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:3000")
 
 
@@ -91,8 +91,15 @@ async def send_verification_email(email: str, token: str) -> bool:
     
     try:
         if not RESEND_API_KEY:
-            print("Error: RESEND_API_KEY is missing in environment variables.")
+            print("❌ Error: RESEND_API_KEY is missing in environment variables.")
             return False
+            
+        if not os.getenv("RESEND_FROM_EMAIL"):
+            print("❌ Error: RESEND_FROM_EMAIL is not set in environment variables. Resend requires a verified domain email (e.g. hello@yourdomain.com).")
+            # If we're using a trial/testing key, users can use onboarding@resend.dev but only for their own email.
+            # We don't want to default to something that will fail.
+            if not FROM_EMAIL or FROM_EMAIL == "noreply@yourdomain.com":
+                 return False
 
         async with httpx.AsyncClient() as client:
             response = await client.post(

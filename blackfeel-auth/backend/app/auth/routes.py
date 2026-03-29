@@ -66,12 +66,17 @@ async def signup(
     # DUAL DISPATCH: Send both email and WhatsApp in the background
     background_tasks.add_task(send_verification_email, signup_data.email, token)
     
-    if signup_data.phone:
+    whatsapp_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
+    whatsapp_phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+
+    if signup_data.phone and whatsapp_token and whatsapp_phone_id:
         # signup_data.phone is already formatted by the Pydantic validator (no + sign)
         background_tasks.add_task(send_verification_whatsapp, 
                                   to_phone=signup_data.phone,
                                   token=token, 
                                   user_email=signup_data.email)
+    elif signup_data.phone:
+        print("⚠️ WhatsApp phone provided but WhatsApp credentials (WHATSAPP_ACCESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID) are missing. Skipping WhatsApp verification.")
     
     return JSONResponse(
         status_code=201,
@@ -176,13 +181,18 @@ async def resend_verification(
     token = await generate_verification_token(db, user.id)
     background_tasks.add_task(send_verification_email, user.email, token)
     
-    if user.phone:
+    whatsapp_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
+    whatsapp_phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+
+    if user.phone and whatsapp_token and whatsapp_phone_id:
         background_tasks.add_task(send_verification_whatsapp, user.phone, token, user.email)
+    elif user.phone:
+        print("⚠️ WhatsApp phone provided but WhatsApp credentials (WHATSAPP_ACCESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID) are missing. Skipping WhatsApp verification.")
     
     return {
         "message": "Verification link resent. Please check your Email and WhatsApp.",
         "email_sent": True,
-        "whatsapp_sent": bool(user.phone)
+        "whatsapp_sent": bool(user.phone and whatsapp_token and whatsapp_phone_id)
     }
 
 
